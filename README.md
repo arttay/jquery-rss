@@ -54,6 +54,14 @@ This plugin can be used to read a RSS feed (via the Google Feed API) and transfo
           bar: function(entry, tokens) { return entry.title }
         },
 
+
+
+        //an element for finding a specific node in the 
+        // xml that the google feed doesnt return 
+        xmlParseElem: "enclosure",
+        
+
+
         // output mode of google feed loader request
         // default: 'json'
         // valid values: 'json', 'json_xml'
