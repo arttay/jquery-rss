@@ -244,5 +244,7 @@
     new RSS(this, url, options, callback).render()
     return this; //implement chaining
   }
+  console.log("art");
 
 })(jQuery)
+//art
