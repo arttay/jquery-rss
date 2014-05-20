@@ -2,6 +2,9 @@
   "use strict";
 
   var RSS = function(target, url, options, callback) {
+
+
+
     this.target       = target
     this.url          = url
     this.html         = []
@@ -16,6 +19,7 @@
       tokens: {},
       outputMode: 'json',
       effect: 'show',
+      xmlParseElem: null,
       error: function() {
         console.log("jQuery RSS: url doesn't link to RSS-Feed");
       },
@@ -30,7 +34,7 @@
   RSS.prototype.load = function(callback) {
     var apiProtocol = "http" + (this.options.ssl ? "s" : "")
       , apiHost     = apiProtocol + "://ajax.googleapis.com/ajax/services/feed/load"
-      , apiUrl      = apiHost + "?v=1.0&output=" + this.options.outputMode + "&callback=?&q=" + encodeURIComponent(this.url)
+      , apiUrl      = apiHost + "?v=1.0&output=" + this.options.outputMode + "&callback=?&q=" + encodeURIComponent(this.url);
 
     if (this.options.limit != null) apiUrl += "&num=" + this.options.limit;
     if (this.options.key != null)   apiUrl += "&key=" + this.options.key;
@@ -39,9 +43,12 @@
   }
 
   RSS.prototype.render = function() {
+  
     var self = this
 
     this.load(function(data) {
+     if(self.options.xmlParseElem !== null) self.parseXml(data);
+
       try {
         self.feed    = data.responseData.feed
         self.entries = data.responseData.feed.entries
@@ -51,7 +58,7 @@
         return self.options.error.call(self)
       }
 
-      var html = self.generateHTMLForEntries()
+      var html = self.gener ateHTMLForEntries()
 
       self.target.append(html.layout)
 
@@ -92,8 +99,14 @@
           layout:  null
         }
 
-    $(this.entries).each(function() {
-      var entry = this
+    $(this.entries).each(function(key) {
+      //key is needed for xml parsing
+      var entry = this;
+      if(self.options.xmlParseElem !== null){
+        if(self.xmlFoundElem[key].attributes["url"] !== undefined){
+          entry.xmlElem = self.xmlFoundElem[key].attributes["url"].value;
+        }
+      }
 
       if(self.isRelevant(entry)) {
         var evaluatedString = self.evaluateStringForEntry(self.options.entryTemplate, entry)
@@ -113,6 +126,7 @@
   }
 
   RSS.prototype.wrapContent = function(content) {
+    
     if($.trim(content).indexOf('<') !== 0) {
       // the content has no html => create a surrounding div
       return $("<div>" + content + "</div>")
@@ -160,6 +174,8 @@
   }
 
   RSS.prototype.evaluateStringForEntry = function(string, entry) {
+
+    //console.log(string);
     var result = string
       , self   = this
 
@@ -172,7 +188,7 @@
   }
 
   RSS.prototype.isRelevant = function(entry) {
-    var tokenMap = this.getTokenMap(entry)
+       var tokenMap = this.getTokenMap(entry)
 
     if(this.options.filter) {
       if(this.options.filterLimit && (this.options.filterLimit == this.html.length)) {
@@ -186,11 +202,13 @@
   }
 
   RSS.prototype.getTokenMap = function(entry) {
+    var self = this;
     if (!this.feedTokens) {
       var feed = JSON.parse(JSON.stringify(this.feed))
       delete feed.entries
       this.feedTokens = feed
     }
+ 
 
     return $.extend({
       feed:      this.feedTokens,
@@ -225,11 +243,20 @@
       teaserImageUrl: (function(entry) {
         try { return entry.content.match(/(<img.*?>)/gi)[0].match(/src="(.*?)"/)[1] }
         catch(e) { return "" }
+      })(entry),
+
+      xmlElem: (function(entry){
+        if(self.options.xmlParseElem !== null){
+            return entry.xmlElem;
+        }
       })(entry)
+
     }, this.options.tokens)
   }
 
   RSS.prototype.getValueForToken = function(_token, entry) {
+
+
     var tokenMap = this.getTokenMap(entry)
       , token    = _token.replace(/[\{\}]/g, '')
       , result   = tokenMap[token]
@@ -240,11 +267,22 @@
       throw new Error('Unknown token: ' + _token)
   }
 
+  RSS.prototype.parseXml = function(data){   
+
+    var xml  = data.responseData.xmlString,
+        xmlDoc = $.parseXML( xml ),
+        $xml = $( xmlDoc ),
+        $xmlFind = $xml.find(this.options.xmlParseElem);
+
+        this.xmlFoundElem = $xmlFind;
+           console.log(this.xmlFoundElem);
+  }
+
+
+
   $.fn.rss = function(url, options, callback) {
     new RSS(this, url, options, callback).render()
     return this; //implement chaining
   }
-  console.log("art");
 
 })(jQuery)
-//art
